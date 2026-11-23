@@ -1,0 +1,70 @@
+Imagine you're building an AI application that summarizes research papers, generates quizzes, or answers questions about banking transactions.
+
+You could directly send a prompt to an LLM and get a response. But what if your application needs to perform multiple operations before returning the final answer?
+
+For example:
+1. Receive a user's question.
+2. Prepare a prompt.
+3. Send the prompt to an LLM.
+4. Parse the LLM's response.
+5. Store the result in a database.
+Managing each operation independently can become complicated.
+
+Chains solve this problem by connecting multiple components into a single workflow.
+1. What exactly is a Chain?
+A Chain is a sequence or combination of operations where the output of one operation can become the input of another operation.
+
+Think of it as a pipeline.
+Simple LangChain pipeline
+User Input
+
+"Explain data engineering"
+
+
+Prompt Template
+
+Constructs the LLM prompt
+
+
+LLM
+
+Generates an answer
+
+
+Output Parser
+
+Processes the LLM response
+
+
+Final Output
+
+
+Instead of manually executing every component, LangChain lets you connect them into one runnable pipeline.
+
+That's a Chain!
+2. Simple Chain
+A Simple Chain is a basic pipeline where multiple components are connected sequentially.
+
+Let's consider a practical example.
+
+Objective: Generate a short summary of a research paper.
+
+We have three components:
+- Prompt Template: Defines how we want the LLM to respond.
+- LLM: Generates the summary.
+- Output Parser: Extracts the response as plain text.
+The flow looks like this:
+Input
+Research paper
+
+Research paper content
+Prompt Template
+"Summarize the following research paper in 200 words: "
+
+LLM
+Generates summary
+String Output Parser
+Clean text summary
+
+Code example (LangChain LCEL)
+Modern LangChain uses LCEL (LangChain Expression Language) to compose components using the pipe operator |.

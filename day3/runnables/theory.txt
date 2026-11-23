@@ -1,0 +1,389 @@
+Let's understand Runnables from the ground up.
+
+You have already learned about Prompt Templates, Models, Output Parsers, and Chains in LangChain. Runnables are the concept that connects all these components and makes it possible to build complex LLM applications.
+
+The central idea is:
+
+A Runnable is anything in LangChain that can perform a task when you give it an input and produce an output.
+
+Think of it as a standardized interface that different components follow.
+
+For example:
+- Prompt Template receives variables and generates a prompt.
+- LLM receives a prompt and generates a response.
+- Output Parser receives the LLM response and extracts the required output.
+- Retriever receives a query and retrieves relevant documents.
+All these components can work together because they follow the Runnable interface.
+
+1. Understanding Runnable Architecture
+Imagine you're building a simple AI application that answers questions about research papers.
+
+Your application might follow this workflow:
+Research Paper Q&A Pipeline
+User Input
+
+"Explain the Transformer architecture"
+
+
+Prompt Template
+
+Creates the structured prompt
+
+
+LLM
+
+Generates an answer
+
+
+Output Parser
+
+Extracts the final text
+
+
+Final Answer
+
+
+Each component performs a different operation, but LangChain provides a common way to execute them.
+
+That common interface is called a Runnable.
+
+A Runnable commonly supports methods such as:
+Method	Purpose
+invoke()	Execute with one input
+batch()	Execute with multiple inputs
+stream()	Generate output incrementally
+ainvoke()	Asynchronous execution
+
+For example:
+result = chain.invoke({    "topic": "Transformer architecture"})print(result)
+
+
+
+Here, invoke() executes the Runnable with the provided input.
+
+2. Runnable Categories
+LangChain Runnables can be understood in two broad categories.
+A. Task-Specific Runnables
+These are components designed to perform particular tasks.
+
+Examples:
+Runnable	Responsibility
+Prompt Template	Creates prompts
+Chat Model	Generates responses
+Output Parser	Parses model output
+Retriever	Retrieves relevant documents
+
+For example:
+prompt = ChatPromptTemplate.from_template(    "Explain {topic} in simple language.")model = ChatOpenAI()parser = StrOutputParser()
+
+
+
+Here, prompt, model, and parser are all Runnables.
+
+Each performs a specific job.
+B. Runnable Primitives
+Now imagine you want to build a more complex application.
+
+You might want to:
+- Execute multiple tasks simultaneously.
+- Pass information through multiple steps.
+- Introduce conditional execution.
+- Integrate your own Python functions.
+- Combine several Runnables into a pipeline.
+Task-specific components alone don't provide the orchestration structure.
+
+This is where Runnable Primitives come in.
+
+They are building blocks used to organize and control the execution of other Runnables.
+
+Let's understand each one.
+
+3. RunnableSequence
+Sequential execution
+RunnableSequence allows you to connect multiple Runnables sequentially.
+
+The output of one Runnable becomes the input of the next Runnable.
+
+Think about a traditional ETL pipeline:
+Extract → Transform → Load
+
+
+Each step depends on the output of the previous step.
+
+RunnableSequence works similarly.
+Example
+Suppose we want to create a chain that explains technical concepts.
+User Input
+    |
+    v
+Prompt Template
+    |
+    v
+LLM
+    |
+    v
+Output Parser
+    |
+    v
+Final Answer
+
+
+Python implementation:
+from langchain_core.runnables import RunnableSequencechain = RunnableSequence(    prompt,    model,    parser)result = chain.invoke({    "topic": "Data Engineering"})
+
+
+
+What happens internally?
+1. The user provides topic.
+2. Prompt Template creates the actual prompt.
+3. The LLM receives that prompt.
+4. The Output Parser extracts the text.
+5. The final result is returned.
+Important concept: Each Runnable receives the output of its predecessor.
+
+This is called sequential composition.
+RunnableSequence
+Runnable A
+
+Runnable B
+
+Runnable C
+
+
+Output A → Input B → Output B → Input C
+
+
+4. RunnableParallel
+Parallel execution
+RunnableParallel is different from RunnableSequence.
+
+Instead of executing tasks one after another, it executes multiple Runnables using the same input.
+
+Let's understand with an example.
+
+Suppose you are building an AI application that analyzes customer feedback.
+
+A customer provides:
+"The delivery was late, but the product quality was excellent."
+
+
+You want to perform three different tasks:
+1. Analyze sentiment.
+2. Summarize the feedback.
+3. Extract important keywords.
+You don't need to execute these tasks sequentially because they are independent.
+
+You can execute them in parallel.
+RunnableParallel
+Same Input
+
+Customer feedback
+
+
+Sentiment
+
+Positive / Negative
+
+
+Summary
+
+Short summary
+
+
+Keywords
+
+Important terms
+
+
+
+
+Combined Dictionary of Results
+
+
+Python implementation
+from langchain_core.runnables import RunnableParallelparallel_chain = RunnableParallel(    sentiment=sentiment_chain,    summary=summary_chain,    keywords=keyword_chain)result = parallel_chain.invoke({    "feedback": "The delivery was late, but the product quality was excellent."})
+
+
+
+The result will be a dictionary similar to:
+{    "sentiment": "Mixed",    "summary": "Delivery was late, but product quality was excellent.",    "keywords": ["delivery", "late", "product quality"]}
+
+
+
+Notice something important:
+
+RunnableParallel returns a dictionary containing the outputs of all its Runnables.
+
+Also, parallel execution is useful when tasks are independent. It can reduce total waiting time, although actual performance depends on the underlying operations and resources.
+
+5. RunnablePassthrough
+Preserving original input
+This is a particularly useful concept when building complex chains.
+
+RunnablePassthrough simply passes the input without modifying it.
+
+Let's understand why we need it.
+
+Imagine you have this input:
+{    "question": "What is Apache Spark?"}
+
+
+
+You want to perform two operations:
+1. Preserve the original question.
+2. Generate an answer to that question.
+You can use RunnablePassthrough to retain the original input while another Runnable processes it.
+Example
+from langchain_core.runnables import (    RunnableParallel,    RunnablePassthrough)chain = RunnableParallel(    original_question=RunnablePassthrough(),    answer=question_answer_chain)
+
+
+
+When you execute:
+result = chain.invoke({    "question": "What is Apache Spark?"})
+
+
+
+You get a structure conceptually similar to:
+{    "original_question": {        "question": "What is Apache Spark?"    },    "answer": "Apache Spark is a distributed data processing engine..."}
+
+
+
+The original input is preserved in one branch while the other branch processes it.
+Where is this useful?
+Consider a Retrieval-Augmented Generation (RAG) application.
+
+You receive a question, retrieve relevant documents, and then ask an LLM to generate an answer.
+
+But you also want to retain the original question for the final response.
+
+Conceptually:
+             User Question
+                   |
+            RunnableParallel
+              /          \
+             /            \
+    Passthrough        Retriever
+         |                  |
+  Original Question    Documents
+             \            /
+              \          /
+              Final Prompt
+                   |
+                  LLM
+
+
+The key idea: RunnablePassthrough helps you preserve information while other operations transform or process it.
+
+6. RunnableLambda
+Custom Python functions
+This is one of my favorite Runnable primitives because it connects your own Python logic with LangChain.
+
+Suppose you have a Python function:
+def word_count(text):    return len(text.split())
+
+
+
+Normally, this is just a Python function.
+
+But what if you want to integrate this function into a LangChain pipeline?
+
+You can convert it into a Runnable using RunnableLambda.
+Example
+from langchain_core.runnables import RunnableLambdadef word_count(text):    return len(text.split())word_count_runnable = RunnableLambda(word_count)
+
+
+
+Now you can invoke it:
+result = word_count_runnable.invoke(    "Apache Spark is a distributed computing engine")print(result)
+
+
+
+Output:
+8
+
+
+Now here's where things become interesting.
+
+You can combine it with other Runnables.
+chain = prompt | model | parser | word_count_runnable
+
+
+
+The execution becomes:
+Prompt
+  |
+  v
+LLM
+  |
+  v
+Output Parser
+  |
+  v
+Custom Python Function
+  |
+  v
+Word Count
+
+
+This means you can integrate:
+- Data cleaning.
+- Custom calculations.
+- Business logic.
+- Validation.
+- Python-based transformations.
+into an LLM application.
+
+Think of RunnableLambda as an adapter that makes your ordinary Python functions compatible with LangChain's Runnable ecosystem.
+
+7. RunnableBranch
+Conditional execution
+RunnableBranch introduces conditional logic into LangChain.
+
+In ordinary programming, you use if, elif, and else to execute different code depending on a condition.
+
+RunnableBranch brings a similar concept to Runnable pipelines.
+Example: Customer support chatbot
+Imagine you are building a customer support chatbot.
+
+Users can ask two types of questions:
+- Technical questions.
+- Billing questions.
+You want to route each question to a different chain.
+
+Your logic:
+if question_is_technical:    execute_technical_chain()elif question_is_billing:    execute_billing_chain()else:    execute_general_chain()
+
+
+
+This is exactly the kind of workflow RunnableBranch supports.
+Python implementation
+from langchain_core.runnables import RunnableBranchbranch = RunnableBranch(    (        lambda x: "technical" in x["category"].lower(),        technical_chain    ),    (        lambda x: "billing" in x["category"].lower(),        billing_chain    ),    general_chain)
+
+
+
+Execution:
+result = branch.invoke({    "category": "technical",    "question": "Why is my API returning 500?"})
+
+
+
+What happens?
+1. RunnableBranch receives the input.
+2. It evaluates the first condition.
+3. If the condition is true, it executes technical_chain.
+4. Otherwise, it checks the next condition.
+5. If no condition matches, it executes general_chain.
+RunnableBranch execution
+Incoming Question
+
+
+Is it technical?
+Yes
+No
+
+Technical Chain
+Check Billing
+
+
+If technical is false, the next condition is evaluated. If none matches, the default chain runs.
+
+One important distinction: RunnableBranch checks conditions in order and executes the first matching branch. It does not execute all matching branches.
